@@ -25,12 +25,12 @@ For example, given the buffer:
       
 ```
 
-The following vars must be setted in order to get this working
+The following vars must be setted in order to get this working:
 ```
 (setq jira-host "https://my-jira-host.com")
 (setq jira-user "super-user")
 (setq jira-pass "awfulpass123")
-(require 'org-to-jira)
+(load-file "~/.emacs.d/org-to-jira.el")
 ```
 
 
