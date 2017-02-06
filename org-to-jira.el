@@ -1,3 +1,4 @@
+
 ;;; -*- lexical-binding: t; -*-
 (require 'parse-time)
 (require 'request)
@@ -95,6 +96,7 @@
     (request
      (format "%s/rest/api/2/issue/%s/worklog" jira-host key)
      :headers headers
+     :sync t
      :success
      (cl-function (lambda (&key data &allow-other-keys)
     		    (let (worklogs exists)
@@ -145,3 +147,17 @@
 		(mapcar (lambda (el) (add-worklog issue el)) clocks)))
 	    issues)
     (goto-char initial-point)))
+
+(defun org-to-jira-entry ()
+  "Syncs current org entry to jira"
+  (interactive)
+  (let (initial-point key matches)
+    (setq key (org-get-issue-name))
+    (setq matches (string-match "[A-Z]+\-[0-9]+" key))
+    (if (eq matches 0)
+	(progn
+	  (let (clocks)
+	    (setq clocks (org-get-clocks key))
+	    (mapcar (lambda (el) (add-worklog key el)) clocks)))
+      (message "Not in an issue, exitting"))
+    ))

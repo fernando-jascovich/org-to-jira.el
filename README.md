@@ -27,10 +27,10 @@ For example, given the buffer:
 
 The following vars must be setted in order to get this working:
 ```
+(load-file "~/.emacs.d/org-to-jira.el")
 (setq jira-host "https://my-jira-host.com")
 (setq jira-user "super-user")
 (setq jira-pass "awfulpass123")
-(load-file "~/.emacs.d/org-to-jira.el")
 ```
 
 
