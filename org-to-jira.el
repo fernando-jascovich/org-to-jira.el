@@ -24,12 +24,14 @@
 	  (setq level (org-get-entry-level)))))
     (org-get-entry-name)))
 
-(defun filter-clocks (item)
-  (if (equal (car item) "CLOCK")
-      (cdr item)))
+(defun is-jira-key (str)
+  "Detects if STR is a valid Jira key"
+  (let (matches)
+    (setq matches (string-match "[A-Z]+\-[0-9]+" str))
+    (not (eq matches 0))))
 
 (defun org-get-clocks (key)
-  (let (name (found nil) props)
+  (let (name (found nil) (clocks '()))
     (while (outline-previous-heading))
     (setq name (org-get-entry-name))
     (if (not (string-equal key name))
@@ -37,8 +39,16 @@
 	  (setq name (org-get-entry-name))
 	  (if (string-equal name key)
 	      (setq found t))))
-    (setq props (org-entry-properties))
-    (delq nil (mapcar 'filter-clocks props))))
+
+    (while (and (eq (forward-line) 0) (not (outline-on-heading-p)))
+      (let ((line (thing-at-point 'line)) clock)
+	(if (string-match-p "CLOCK:" line)
+	    (progn
+	      (setq clock (split-string line "CLOCK: " t split-string-default-separators))
+	      (add-to-list 'clocks (car clock) t)
+	      ))
+	))
+    clocks))
 
 (defun get-jira-worked-time (clock)
   (let (splitted)
@@ -151,13 +161,15 @@
 (defun org-to-jira-entry ()
   "Syncs current org entry to jira"
   (interactive)
-  (let (initial-point key matches)
+  (let (initial-point key)
     (setq key (org-get-issue-name))
-    (setq matches (string-match "[A-Z]+\-[0-9]+" key))
-    (if (eq matches 0)
+    (if (not (is-jira-key key))
 	(progn
 	  (let (clocks)
 	    (setq clocks (org-get-clocks key))
 	    (mapcar (lambda (el) (add-worklog key el)) clocks)))
       (message "Not in an issue, exitting"))
     ))
+
+(provide 'org-to-jira)
+;;; org-to-jira.el ends here
