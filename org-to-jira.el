@@ -27,7 +27,7 @@
 (defun is-jira-key (str)
   "Detects if STR is a valid Jira key"
   (let (matches)
-    (setq matches (string-match "[A-Z]+\-[0-9]+" str))
+    (setq matches (string-match "[A-Z0-9]+\-[0-9]+" str))
     (not (eq matches 0))))
 
 (defun org-get-clocks (key)
@@ -146,11 +146,10 @@
       (while (outline-next-heading)
         (setq p (point))
         (setq key (org-get-issue-name))
-        (setq matches (string-match "[A-Z]+\-[0-9]+" key))
+        (setq matches (string-match "[A-Z0-9]+\-[0-9]+" key))
         (if (eq matches 0)
             (add-to-list 'issues key))
         (goto-char p)))
-    (message "%s" (remove-duplicates issues))
     (mapcar (lambda (issue)
               (let (clocks)
                 (setq clocks (org-get-clocks issue))
