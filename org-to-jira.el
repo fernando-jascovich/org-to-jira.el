@@ -1,4 +1,31 @@
+;;; org-to-jira.el --- Sync Jira worklogs from org clocks.
 
+;; Author: Fernando Jascovich
+;; Keywords: jira, org, clock, worklog, convenience
+;; Version: 0.1
+;; Url: https://github.com/fernando-jascovich/org-to-jira.el
+;; Package-Requires: ((emacs "24.3"), (request "0.3"))
+
+;; This file is NOT part of GNU Emacs
+;; This program is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+
+;; This program is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+;;; Commentary:
+
+;; Org to jira sync given some assumptions.
+;; Please check readme.md for more details.
+
+;;; Code:
 ;;; -*- lexical-binding: t; -*-
 (require 'parse-time)
 (require 'request)
@@ -7,12 +34,15 @@
               jira-pass "")
 
 (defun org-get-entry-level ()
+  "Return org entry level."
   (nth 0 (org-heading-components)))
 
 (defun org-get-entry-name ()
+  "Return org entry name."
   (nth 4 (org-heading-components)))
 
 (defun org-get-issue-name ()
+  "Return org entry name matching expected nested level."
   (let (level)
     (setq level (org-get-entry-level))
     (if (> level 2)
@@ -25,12 +55,13 @@
     (org-get-entry-name)))
 
 (defun is-jira-key (str)
-  "Detects if STR is a valid Jira key"
+  "Detects if STR is a valid Jira key."
   (let (matches)
     (setq matches (string-match "[A-Z0-9]+\-[0-9]+" str))
     (not (eq matches 0))))
 
 (defun org-get-clocks (key)
+  "Extract clocks from org-entry matching KEY."
   (let (name (found nil) (clocks '()))
     (while (outline-previous-heading))
     (setq name (org-get-entry-name))
@@ -51,11 +82,13 @@
     clocks))
 
 (defun get-jira-worked-time (clock)
+  "Convert org CLOCK string to jira compatible string."
   (let (splitted)
     (setq splitted (split-string clock ":"))
     (format "%sh %sm" (nth 0 splitted) (nth 1 splitted))))
 
 (defun get-jira-start-date (datestring)
+  "Get start date and time from DATESTRING for Jira."
   (let (date)
     (setq date (parse-time-string datestring))
     (format "%d-%02d-%02dT%02d:%02d:%02d.000+0000"
@@ -67,10 +100,13 @@
             (nth 0 date))))
 
 (defun get-jira-auth ()
+  "Jira REST auth string."
   (concat "Basic "
           (base64-encode-string (concat jira-user ":" jira-pass))))
 
 (defun do-add-worklog (key start worked)
+  "Effectively add worklog to Jira.
+Using KEY as ticket, START as start data and WORKED as duration time."
   (message "Updating %s..." key)
   (let (data headers)
     (setq data '()
@@ -98,6 +134,8 @@
      )))
 
 (defun check-for-existing-worklog (key started worked)
+  "Check for duplicate worklog on Jira.
+For ticket KEY, at date STARTED and WORKED duration."
   (message "Checking for duplicate worklog on %s..." key)
   (let (headers)
     (setq headers '())
@@ -128,6 +166,7 @@
      :parser 'json-read)))
 
 (defun add-worklog (key clock)
+  "Entry point for adding worklog to Jira ticket KEY with org CLOCK."
   (let (dates worked start)
     (setq clock (split-string clock "=>" t "\s*"))
     (setq dates (split-string (car clock) "--"))
@@ -136,7 +175,7 @@
     (check-for-existing-worklog key start worked)))
 
 (defun org-to-jira ()
-  "Syncs current org buffer to jira"
+  "Syncs current org buffer to jira."
   (interactive)
   (let (issues initial-point)
     (setq initial-point (point))
@@ -158,7 +197,7 @@
     (goto-char initial-point)))
 
 (defun org-to-jira-entry ()
-  "Syncs current org entry to jira"
+  "Syncs current org entry to jira."
   (interactive)
   (let (initial-point key)
     (setq key (org-get-issue-name))
