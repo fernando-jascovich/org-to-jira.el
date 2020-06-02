@@ -60,8 +60,9 @@
     (setq matches (string-match "[A-Z0-9]+\-[0-9]+" str))
     (not (eq matches 0))))
 
-(defun org-get-clocks (key)
-  "Extract clocks from org-entry matching KEY."
+(defun org-get-clocks (key &optional date)
+  "Extract clocks from org-entry matching KEY.
+Optionally, clocks will be filtered using DATE."
   (let (name (found nil) (clocks '()))
     (while (outline-previous-heading))
     (setq name (org-get-entry-name))
@@ -72,11 +73,14 @@
               (setq found t))))
 
     (while (and (eq (forward-line) 0) (not (outline-on-heading-p)))
-      (let ((line (thing-at-point 'line)) clock)
+      (let ((line (substring-no-properties (thing-at-point 'line))) clock)
         (if (string-match-p "CLOCK:" line)
             (progn
               (setq clock (split-string line "CLOCK: " t split-string-default-separators))
-              (add-to-list 'clocks (car clock) t)
+              (if date
+                  (if (string-match-p (regexp-quote date) (car clock))
+                      (add-to-list 'clocks (car clock) t))
+                (add-to-list 'clocks (car clock) t))
               ))
         ))
     clocks))
@@ -174,40 +178,62 @@ For ticket KEY, at date STARTED and WORKED duration."
     (setq start (get-jira-start-date (car dates)))
     (check-for-existing-worklog key start worked)))
 
+(defun issues-from-current-file ()
+  "Get all keys from current org file."
+  (save-excursion
+    (goto-char (point-max))
+    (let ((issues '()))
+      (while (outline-previous-heading))
+      (let (key p matches)
+        (while (outline-next-heading)
+          (setq p (point))
+          (setq key (org-get-issue-name))
+          (setq matches (string-match "[A-Z0-9]+\-[0-9]+" key))
+          (if (eq matches 0)
+              (add-to-list 'issues key))
+          (goto-char p)))
+      issues)))
+
 (defun org-to-jira ()
   "Syncs current org buffer to jira."
   (interactive)
-  (let (issues initial-point)
-    (setq initial-point (point))
-    (setq issues '())
-    (while (outline-previous-heading))
-    (let (key p matches)
-      (while (outline-next-heading)
-        (setq p (point))
-        (setq key (org-get-issue-name))
-        (setq matches (string-match "[A-Z0-9]+\-[0-9]+" key))
-        (if (eq matches 0)
-            (add-to-list 'issues key))
-        (goto-char p)))
+  (let ((issues (issues-from-current-file)))
     (mapcar (lambda (issue)
               (let (clocks)
                 (setq clocks (org-get-clocks issue))
                 (mapcar (lambda (el) (add-worklog issue el)) clocks)))
-            issues)
-    (goto-char initial-point)))
+            issues)))
 
 (defun org-to-jira-entry ()
   "Syncs current org entry to jira."
   (interactive)
-  (let (initial-point key)
-    (setq key (org-get-issue-name))
-    (if (not (is-jira-key key))
-        (progn
-          (let (clocks)
-            (setq clocks (org-get-clocks key))
-            (mapcar (lambda (el) (add-worklog key el)) clocks)))
-      (message "Not in an issue, exitting"))
-    ))
+  (save-excursion
+    (let ((key (org-get-issue-name)))
+      (if (not (is-jira-key key))
+          (progn
+            (let (clocks)
+              (setq clocks (org-get-clocks key))
+              (mapcar (lambda (el) (add-worklog key el)) clocks)))
+        (message "Not in an issue, exitting")))))
+
+(defun org-to-jira-today ()
+  "Syncs entries on current org file from today only."
+  (interactive)
+  (org-to-jira-date (format-time-string "%Y-%m-%d")))
+
+(defun org-to-jira-date (date)
+  "Sync entries on current org file using DATE as filter.
+DATE should be in ISO format: %Y-%m-%d, i.e.: 2020-01-23."
+  (interactive "sDate: ")
+  (save-excursion
+    (let ((issues (issues-from-current-file))
+          (clocks nil))
+      (mapcar
+       (lambda (issue)
+         (setq clocks (org-get-clocks issue date))
+         (if clocks
+             (mapcar (lambda (el) (add-worklog issue el)) clocks)))
+       issues))))
 
 (provide 'org-to-jira)
 ;;; org-to-jira.el ends here
