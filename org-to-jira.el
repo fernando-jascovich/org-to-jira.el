@@ -4,7 +4,6 @@
 ;; Keywords: jira, org, clock, worklog, convenience
 ;; Version: 0.1
 ;; Url: https://github.com/fernando-jascovich/org-to-jira.el
-;; Package-Requires: ((emacs "24.3"), (request "0.3"))
 
 ;; This file is NOT part of GNU Emacs
 ;; This program is free software; you can redistribute it and/or modify
